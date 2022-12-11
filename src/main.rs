@@ -2,6 +2,8 @@ use clap::Parser;
 use dirs_next;
 use scan_dir::ScanDir;
 
+pub mod file_operations;
+
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about=None)]
 struct Cli {
@@ -46,21 +48,7 @@ fn main() {
         println!("Music directory is: {:?}", dirs_next::audio_dir());
     }
 
-    // ScanDir::dirs()
-    // and
-    // ScanDir::files()
-    //iter.filter(|&(_, ref name)| name.ends_with(".rs"))
-    //   .map(|(ref entry, _)| entry.path())
-    //    .collect()
+    file_operations::scan_music_dir(music_dir).unwrap();
 
-    let files = ScanDir::dirs()
-        .read(music_dir, |iter| {
-            for (entry, name) in iter {
-                println!("File {:?} has full path {:?}", name, entry.path());
-            }
-        })
-        .unwrap();
-
-    println!("Hello, world!");
     println!("{:?}", cli);
 }
