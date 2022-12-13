@@ -1,6 +1,5 @@
 use clap::Parser;
 use dirs_next;
-use scan_dir::ScanDir;
 
 pub mod file_operations;
 
@@ -48,7 +47,13 @@ fn main() {
         println!("Music directory is: {:?}", dirs_next::audio_dir());
     }
 
-    file_operations::scan_music_dir(music_dir).unwrap();
+    let music_scanner = file_operations::MusicScanner::new(music_dir);
+
+    for file_batch in music_scanner {
+        for filepath in file_batch {
+            println!("{:?}", filepath);
+        }
+    }
 
     println!("{:?}", cli);
 }
