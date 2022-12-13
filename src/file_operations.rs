@@ -69,11 +69,7 @@ impl Iterator for MusicScanner {
             .unwrap();
 
         // return the found files
-        if files.len() > 0 {
-            Some(files)
-        } else {
-            None
-        }
+        Some(files)
     }
 }
 
