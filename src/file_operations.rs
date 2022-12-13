@@ -1,3 +1,4 @@
+use id3::{Tag, TagLike};
 use std::path::PathBuf;
 
 use scan_dir::ScanDir;
@@ -73,49 +74,45 @@ impl Iterator for MusicScanner {
     }
 }
 
-/// Recursivly scans the given root directory for files
-/// WIP Function! All it does is print the directories
-///
-/// # Examples
-///
-/// ```rust
-/// scan_music_dir("/home/Documents/RustedBeats");
-///
-///>>> "I found a directory src at .../src"
-///>>> "I found a directory debug at .../debug"
-///>>> "I found a file Cargo.toml at .../Cargo.toml"
-///...
-/// ```
-///
-pub fn scan_music_dir(root: String) -> Result<(), ()> {
-    let mut directories = Vec::<PathBuf>::new();
-    directories.push(root.into());
+pub struct ItemTag {
+    pub path: String,
+    pub title: String,
+    pub artist: String,
+    pub album: String,
+    pub album_artist: String,
+}
 
-    while directories.len() != 0 {
-        let target = match directories.pop() {
-            Some(val) => val,
-            None => {
-                panic!("Whoa man this ai't right");
-            }
-        };
+impl ItemTag {
+    pub fn new() -> Self {
+        ItemTag {
+            path: String::new(),
+            title: String::new(),
+            artist: String::new(),
+            album: String::new(),
+            album_artist: String::new(),
+        }
+    }
+}
 
-        ScanDir::dirs()
-            .read(target.clone(), |iter| {
-                for (entry, name) in iter {
-                    directories.push(entry.path());
-                    println!("I found a director {:?} at path {:?}", name, entry.path());
-                }
-            })
-            .unwrap();
+pub fn get_tag(filepath: &PathBuf) -> Result<ItemTag, id3::Error> {
+    let tag = Tag::read_from_path(filepath)?;
 
-        ScanDir::files()
-            .read(target, |iter| {
-                for (entry, name) in iter {
-                    println!("found file {:?} at path {:?}", name, entry.path());
-                }
-            })
-            .unwrap();
+    let mut output_tag = ItemTag::new();
+    output_tag.path = filepath.to_string_lossy().into_owned();
+
+    // Get a bunch of frames...
+    if let Some(artist) = tag.artist() {
+        output_tag.artist = artist.to_string();
+        println!("artist: {}", artist);
+    }
+    if let Some(title) = tag.title() {
+        output_tag.title = title.to_string();
+        println!("title: {}", title);
+    }
+    if let Some(album) = tag.album() {
+        output_tag.album = album.to_string();
+        println!("album: {}", album);
     }
 
-    Ok(())
+    Ok(output_tag)
 }

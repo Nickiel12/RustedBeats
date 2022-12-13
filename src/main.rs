@@ -1,6 +1,9 @@
+use std::path::PathBuf;
+
 use clap::Parser;
 use dirs_next;
 
+pub mod db_operations;
 pub mod file_operations;
 
 #[derive(Parser, Debug)]
@@ -38,20 +41,25 @@ fn main() {
     let music_dir: String;
     if cli.root_directory.is_some() {
         music_dir = cli.root_directory.clone().unwrap();
-        println!(
-            "Music directory is: {}",
-            cli.root_directory.clone().unwrap()
-        );
     } else {
         music_dir = String::from(dirs_next::audio_dir().unwrap().to_str().unwrap());
-        println!("Music directory is: {:?}", dirs_next::audio_dir());
     }
 
     let music_scanner = file_operations::MusicScanner::new(music_dir);
 
+    let mut db_path = PathBuf::new();
+    db_path.push("/home/nixolas/RustedBeats.db");
+
+    let dbo = db_operations::DBObject::new(&db_path, false).unwrap();
+
     for file_batch in music_scanner {
         for filepath in file_batch {
-            println!("{:?}", filepath);
+            if filepath.to_string_lossy().ends_with(".wav") {
+                continue;
+            } else {
+                let tag = file_operations::get_tag(&filepath).unwrap();
+                dbo.save_tag(&tag).unwrap();
+            }
         }
     }
 
