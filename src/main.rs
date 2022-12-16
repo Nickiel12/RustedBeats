@@ -47,8 +47,7 @@ fn main() {
 
     let music_scanner = file_operations::MusicScanner::new(music_dir);
 
-    let mut db_path = PathBuf::new();
-    db_path.push("/home/nixolas/RustedBeats.db");
+    let db_path: PathBuf = ["home", "nixolas", "RustedBeats.db"].iter().collect();
 
     let dbo = db_operations::DBObject::new(&db_path, false).unwrap();
 
