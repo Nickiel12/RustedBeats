@@ -33,10 +33,13 @@ impl Iterator for MusicScanner {
     ///
     /// # Examples
     /// ```rust
-    /// let music_scanner = MusicScanner::new("/home/usr/Music");
-    /// let files = music_scanner.next();
-    /// println!(files);
+    /// let music_scanner = MusicScanner::new("/home/exampleusr/Music");
+    /// let mut file = music_scanner.next();
+    /// println!(file);
     /// >>> "/home/usr/Music/file_1.mp3"
+    ///
+    /// file = music_scanner.next();
+    /// println!(file);
     /// >>> "/home/usr/Music/file_2.mp3"
     /// ```
     ///
@@ -74,6 +77,8 @@ impl Iterator for MusicScanner {
     }
 }
 
+/// A struct that defines all the music tags supported by Sousa
+#[derive(Debug, Clone)]
 pub struct ItemTag {
     pub path: String,
     pub title: String,
@@ -94,6 +99,7 @@ impl ItemTag {
     }
 }
 
+/// Returns the music information from a filepath
 pub fn get_tag(filepath: &PathBuf) -> Result<ItemTag, id3::Error> {
     let tag = Tag::read_from_path(filepath)?;
 
@@ -103,15 +109,12 @@ pub fn get_tag(filepath: &PathBuf) -> Result<ItemTag, id3::Error> {
     // Get a bunch of frames...
     if let Some(artist) = tag.artist() {
         output_tag.artist = artist.to_string();
-        println!("artist: {}", artist);
     }
     if let Some(title) = tag.title() {
         output_tag.title = title.to_string();
-        println!("title: {}", title);
     }
     if let Some(album) = tag.album() {
         output_tag.album = album.to_string();
-        println!("album: {}", album);
     }
 
     Ok(output_tag)
