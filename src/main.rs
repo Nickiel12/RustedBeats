@@ -1,7 +1,12 @@
+use rodio::{source::Source, Decoder, OutputStream};
+use std::fs::File;
+use std::io::BufReader;
 use std::path::PathBuf;
 
 use clap::Parser;
 use dirs_next;
+
+use crate::db_operations::{DatabaseRequest, PartialTag};
 
 pub mod db_operations;
 pub mod file_operations;
@@ -47,7 +52,7 @@ fn main() {
 
     let music_scanner = file_operations::MusicScanner::new(music_dir);
 
-    let db_path: PathBuf = ["home", "nixolas", "RustedBeats.db"].iter().collect();
+    let db_path: PathBuf = ["/", "home", "nixolas", "RustedBeats.db"].iter().collect();
 
     let dbo = db_operations::DBObject::new(&db_path, false).unwrap();
 
@@ -61,6 +66,32 @@ fn main() {
             }
         }
     }
+
+    let test_tag = PartialTag {
+        title: Some("Clap On, Clap Off".to_string()),
+        ..PartialTag::default()
+    };
+
+    let test_file = dbo
+        .get(&DatabaseRequest {
+            search_type: db_operations::SearchType::Where,
+            search_tag: test_tag,
+        })
+        .unwrap()
+        .unwrap();
+
+    // Get a output stream handle to the default physical sound device
+    let (_stream, stream_handle) = OutputStream::try_default().unwrap();
+    // Load a sound from a file, using a path relative to Cargo.toml
+    let file = BufReader::new(File::open(test_file[0].path.clone()).unwrap());
+    // Decode that sound file into a source
+    let source = Decoder::new(file).unwrap();
+    // Play the sound directly on the device
+    stream_handle.play_raw(source.convert_samples()).unwrap();
+
+    // The sound plays in a separate audio thread,
+    // so we need to keep the main thread alive while it's playing.
+    std::thread::sleep(std::time::Duration::from_secs(35));
 
     println!("{:?}", cli);
 }
