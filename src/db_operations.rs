@@ -11,8 +11,8 @@ pub enum DatabaseCreationError {
 }
 
 pub struct DatabaseRequest {
-    search_type: SearchType,
-    search_tag: PartialTag,
+    pub search_type: SearchType,
+    pub search_tag: PartialTag,
 }
 
 pub enum SearchType {
@@ -21,11 +21,11 @@ pub enum SearchType {
 }
 
 pub struct PartialTag {
-    path: Option<String>,
-    title: Option<String>,
-    artist: Option<String>,
-    album: Option<String>,
-    album_artist: Option<String>,
+    pub path: Option<String>,
+    pub title: Option<String>,
+    pub artist: Option<String>,
+    pub album: Option<String>,
+    pub album_artist: Option<String>,
 }
 
 impl Default for PartialTag {
@@ -147,7 +147,7 @@ impl DBObject {
 
     pub fn save_tag(self: &Self, tag: &ItemTag) -> Result<(), DatabaseCreationError> {
         self.conn.execute(
-            "INSERT INTO musicinfo (path, title, artist, album, album_artist) VALUES ( ?1, ?2, ?3, ?4, ?5 )",
+            "INSERT OR IGNORE INTO musicinfo (path, title, artist, album, album_artist) VALUES ( ?1, ?2, ?3, ?4, ?5 )",
             params![tag.path, tag.title, tag.artist, tag.album, tag.album_artist],
         )?;
         Ok(())
