@@ -16,3 +16,4 @@ rusqlite = {version="0.28.0", features=["bundled"]}
 scan_dir = "0.3.3"
 derive_more = "0.99.17"
 id3 = "1.5.1"
+rodio = "0.16.0"

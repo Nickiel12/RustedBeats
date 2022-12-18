@@ -14,6 +14,8 @@ pkgs.mkShell {
     ruststable
     sqlite
     sqliteman
+    pkg-config
+    alsa-lib
   ];
 
   RUST_BACKTRACE = 1;
