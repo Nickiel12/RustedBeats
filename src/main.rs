@@ -3,7 +3,6 @@ use server_handling::UIRequest;
 use std::io::BufReader;
 use std::net::TcpStream;
 use std::path::PathBuf;
-use std::thread::spawn;
 use std::{fs::File, net::TcpListener};
 use tungstenite::accept;
 use tungstenite::protocol::WebSocket;
@@ -11,7 +10,8 @@ use tungstenite::protocol::WebSocket;
 use clap::Parser;
 use dirs_next;
 
-use crate::db_operations::{DatabaseRequest, PartialTag};
+use crate::db_operations::DatabaseRequest;
+use crate::server_handling::PartialTag;
 
 pub mod db_operations;
 pub mod file_operations;
@@ -101,42 +101,21 @@ fn main() {
 
     let server = TcpListener::bind("127.0.0.1:9001").unwrap();
 
-    /*
-    for stream in server.incoming() {
-        spawn(move || {
-            let mut websocket = accept(stream.unwrap()).unwrap();
-            loop {
-                let msg = websocket.read_message().unwrap();
-
-                // We do not want to send back ping/pong messages.
-                if msg.is_binary() || msg.is_text() {
-                    println!("is binary?: {:?}", msg.is_binary());
-                    println!("msg: {:?}", msg);
-                }
-            }
-        });
-    }
-    */
-
     let mut sockets = Vec::<WebSocket<TcpStream>>::new();
     loop {
         if let Ok((stream, addr)) = server.accept() {
             println!("New socket connected from: {}", addr);
             //TODO: handle this error
             sockets.push(accept(stream).unwrap());
-            println!("len = {}", sockets.len());
         }
 
         if sockets.len() == 0 {
             std::thread::sleep(std::time::Duration::from_secs(1));
-            println!("sleeping");
         }
 
         for i in 0..sockets.len() {
             if let Ok(mess) = sockets[i].read_message() {
-                println!("got a message from a socket");
                 if mess.is_text() {
-                    println!("It was a text message!");
                     match server_handling::handle_request(mess.into_text().unwrap()) {
                         Err(error) => {
                             println!("There was an error decoding the message: {:?}", error)
@@ -145,8 +124,8 @@ fn main() {
                             UIRequest::Play => sink.play(),
                             UIRequest::Pause => sink.pause(),
                             UIRequest::Skip(skip_direction) => todo!(),
-                            UIRequest::GetList => todo!(),
-                            UIRequest::SwitchTo(partia_tag) => todo!(),
+                            UIRequest::GetList(request) => todo!(),
+                            UIRequest::SwitchTo(partial_tag) => todo!(),
                             UIRequest::GetStatus => todo!(),
                         },
                     }

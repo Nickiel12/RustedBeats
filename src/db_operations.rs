@@ -1,7 +1,8 @@
 use derive_more::From;
-use rusqlite::{params, Connection, Params, Result};
+use rusqlite::{params, Connection, Result};
 
 use crate::file_operations::ItemTag;
+use crate::server_handling::PartialTag;
 
 /// Catch all Error for database creation errors
 #[derive(From, Debug)]
@@ -18,56 +19,6 @@ pub struct DatabaseRequest {
 pub enum SearchType {
     Where,
     Like,
-}
-
-pub struct PartialTag {
-    pub path: Option<String>,
-    pub title: Option<String>,
-    pub artist: Option<String>,
-    pub album: Option<String>,
-    pub album_artist: Option<String>,
-}
-
-impl Default for PartialTag {
-    fn default() -> Self {
-        PartialTag {
-            path: None,
-            title: None,
-            artist: None,
-            album: None,
-            album_artist: None,
-        }
-    }
-}
-
-impl PartialTag {
-    pub fn has_path(self: &Self) -> bool {
-        self.path.is_some()
-    }
-
-    pub fn has_title(self: &Self) -> bool {
-        self.title.is_some()
-    }
-
-    pub fn has_artist(self: &Self) -> bool {
-        self.artist.is_some()
-    }
-
-    pub fn has_album(self: &Self) -> bool {
-        self.album.is_some()
-    }
-
-    pub fn has_album_artist(self: &Self) -> bool {
-        self.album_artist.is_some()
-    }
-
-    pub fn is_empty(self: &Self) -> bool {
-        return self.path.is_none()
-            && self.title.is_none()
-            && self.artist.is_none()
-            && self.album.is_none()
-            && self.album_artist.is_none();
-    }
 }
 
 /// The container object for the main database Connection
