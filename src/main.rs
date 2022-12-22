@@ -122,8 +122,32 @@ fn main() {
                             println!("There was an error decoding the message: {:?}", error)
                         }
                         Ok(req) => match req {
-                            UIRequest::Play => sink.play(),
-                            UIRequest::Pause => sink.pause(),
+                            UIRequest::Play => {
+                                sink.play();
+                                sockets[i]
+                                    .write_message(
+                                        serde_json::to_string(&ServerResponse {
+                                            message: "Player Resumed".into(),
+                                            search_results: vec![],
+                                        })
+                                        .unwrap()
+                                        .into(),
+                                    )
+                                    .unwrap();
+                            }
+                            UIRequest::Pause => {
+                                sink.pause();
+                                sockets[i]
+                                    .write_message(
+                                        serde_json::to_string(&ServerResponse {
+                                            message: "Player Paused".into(),
+                                            search_results: vec![],
+                                        })
+                                        .unwrap()
+                                        .into(),
+                                    )
+                                    .unwrap();
+                            }
                             UIRequest::Skip(skip_direction) => todo!(),
                             UIRequest::Search(request) => {
                                 println!("got a: {:?}", request);
@@ -140,6 +164,7 @@ fn main() {
                                         sockets[i]
                                             .write_message(
                                                 serde_json::to_string(&ServerResponse {
+                                                    message: "Here are the results:".to_string(),
                                                     search_results: items,
                                                 })
                                                 .unwrap()
