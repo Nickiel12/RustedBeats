@@ -12,11 +12,10 @@ use dirs_next;
 use crate::db_operations::DatabaseRequest;
 pub mod db_operations;
 pub mod file_operations;
-pub mod server_handling;
 pub mod message_types;
+pub mod server_handling;
 
 use crate::message_types::{PartialTag, ServerResponse, UIRequest};
-
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about=None)]
@@ -103,6 +102,7 @@ fn main() {
     let server = TcpListener::bind("127.0.0.1:9001").unwrap();
 
     let mut sockets = Vec::<WebSocket<TcpStream>>::new();
+    println!("Listening on {}", server.local_addr().unwrap());
     loop {
         if let Ok((stream, addr)) = server.accept() {
             println!("New socket connected from: {}", addr);

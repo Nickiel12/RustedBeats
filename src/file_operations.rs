@@ -1,8 +1,8 @@
 use id3::{Tag, TagLike};
-use std::path::PathBuf;
 use scan_dir::ScanDir;
+use std::path::PathBuf;
 
-use crate::message_types::{ItemTag};
+use crate::message_types::ItemTag;
 
 const SUPPORTED_FILETYPES: [&str; 1] = ["mp3"];
 
@@ -78,12 +78,13 @@ impl Iterator for MusicScanner {
     }
 }
 
-
 /// Returns the music information from a filepath
 pub fn get_tag(filepath: &PathBuf) -> Result<ItemTag, id3::Error> {
     let tag = Tag::read_from_path(filepath)?;
 
-    let mut output_tag = ItemTag::new();
+    let mut output_tag = ItemTag {
+        ..ItemTag::default()
+    };
     output_tag.path = filepath.to_string_lossy().into_owned();
 
     // Get a bunch of frames...
