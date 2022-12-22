@@ -1,8 +1,7 @@
 use derive_more::From;
 use rusqlite::{params, Connection, Result};
 
-use crate::file_operations::ItemTag;
-use crate::server_handling::PartialTag;
+use crate::message_types::{ItemTag, PartialTag};
 
 /// Catch all Error for database creation errors
 #[derive(From, Debug)]
@@ -14,6 +13,22 @@ pub enum DatabaseCreationError {
 pub struct DatabaseRequest {
     pub search_type: SearchType,
     pub search_tag: PartialTag,
+}
+
+impl SearchType {
+    pub fn is_where(self: &Self) -> bool {
+        match self {
+            SearchType::Where => true,
+            SearchType::Like => false,
+        }
+    }
+
+    pub fn is_like(self: &Self) -> bool {
+        match self {
+            SearchType::Where => false,
+            SearchType::Like => true,
+        }
+    }
 }
 
 pub enum SearchType {
@@ -114,38 +129,54 @@ impl DBObject {
 
         let mut conditions = Vec::<String>::new();
 
+        let does_have_wild = if request.search_type.is_like() {
+            ("'%", "%'")
+        } else {
+            ("'", "'")
+        };
+
         if request.search_tag.has_path() {
             conditions.push(format!(
-                "path = '{}'",
-                request.search_tag.path.clone().unwrap()
+                "path = {}{}{}",
+                does_have_wild.0,
+                request.search_tag.path.clone().unwrap(),
+                does_have_wild.1,
             ));
         }
 
         if request.search_tag.has_title() {
             conditions.push(format!(
-                "title = '{}'",
-                request.search_tag.title.clone().unwrap()
+                "title = {}{}{}",
+                does_have_wild.0,
+                request.search_tag.title.clone().unwrap(),
+                does_have_wild.1,
             ));
         }
 
         if request.search_tag.has_artist() {
             conditions.push(format!(
-                "artist = '{}'",
-                request.search_tag.artist.clone().unwrap()
+                "artist = {}{}{}",
+                does_have_wild.0,
+                request.search_tag.artist.clone().unwrap(),
+                does_have_wild.1,
             ));
         }
 
         if request.search_tag.has_album() {
             conditions.push(format!(
-                "album = '{}'",
-                request.search_tag.album.clone().unwrap()
+                "album = {}{}{}",
+                does_have_wild.0,
+                request.search_tag.album.clone().unwrap(),
+                does_have_wild.1,
             ));
         }
 
         if request.search_tag.has_album_artist() {
             conditions.push(format!(
-                "album_artist = '{}'",
-                request.search_tag.album_artist.clone().unwrap()
+                "album_artist = {}{}{}",
+                does_have_wild.0,
+                request.search_tag.album_artist.clone().unwrap(),
+                does_have_wild.1,
             ));
         }
 

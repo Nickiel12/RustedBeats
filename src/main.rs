@@ -1,5 +1,4 @@
 use rodio::{Decoder, OutputStream, Sink};
-use server_handling::UIRequest;
 use std::io::BufReader;
 use std::net::TcpStream;
 use std::path::PathBuf;
@@ -11,11 +10,13 @@ use clap::Parser;
 use dirs_next;
 
 use crate::db_operations::DatabaseRequest;
-use crate::server_handling::PartialTag;
-
 pub mod db_operations;
 pub mod file_operations;
 pub mod server_handling;
+pub mod message_types;
+
+use crate::message_types::{PartialTag, ServerResponse, UIRequest};
+
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about=None)]
@@ -74,7 +75,7 @@ fn main() {
     }
 
     let test_tag = PartialTag {
-        title: Some("%bees%".to_string()),
+        title: Some("bees".to_string()),
         ..PartialTag::default()
     };
 
@@ -124,7 +125,32 @@ fn main() {
                             UIRequest::Play => sink.play(),
                             UIRequest::Pause => sink.pause(),
                             UIRequest::Skip(skip_direction) => todo!(),
-                            UIRequest::GetList(request) => todo!(),
+                            UIRequest::Search(request) => {
+                                println!("got a: {:?}", request);
+                                let items = dbo
+                                    .get(&DatabaseRequest {
+                                        search_type: db_operations::SearchType::Like,
+                                        search_tag: request,
+                                    })
+                                    .unwrap();
+
+                                match items {
+                                    None => sockets[i].write_message("None".into()).unwrap(),
+                                    Some(items) => {
+                                        sockets[i]
+                                            .write_message(
+                                                serde_json::to_string(&ServerResponse {
+                                                    search_results: items,
+                                                })
+                                                .unwrap()
+                                                .into(),
+                                            )
+                                            .unwrap();
+                                    }
+                                }
+
+                                //println!("got from db: {:?}", items);
+                            }
                             UIRequest::SwitchTo(partial_tag) => todo!(),
                             UIRequest::GetStatus => todo!(),
                         },

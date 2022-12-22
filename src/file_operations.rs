@@ -1,7 +1,8 @@
 use id3::{Tag, TagLike};
 use std::path::PathBuf;
-
 use scan_dir::ScanDir;
+
+use crate::message_types::{ItemTag};
 
 const SUPPORTED_FILETYPES: [&str; 1] = ["mp3"];
 
@@ -77,27 +78,6 @@ impl Iterator for MusicScanner {
     }
 }
 
-/// A struct that defines all the music tags supported by Sousa
-#[derive(Debug, Clone)]
-pub struct ItemTag {
-    pub path: String,
-    pub title: String,
-    pub artist: String,
-    pub album: String,
-    pub album_artist: String,
-}
-
-impl ItemTag {
-    pub fn new() -> Self {
-        ItemTag {
-            path: String::new(),
-            title: String::new(),
-            artist: String::new(),
-            album: String::new(),
-            album_artist: String::new(),
-        }
-    }
-}
 
 /// Returns the music information from a filepath
 pub fn get_tag(filepath: &PathBuf) -> Result<ItemTag, id3::Error> {
