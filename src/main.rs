@@ -124,29 +124,21 @@ fn main() {
                         Ok(req) => match req {
                             UIRequest::Play => {
                                 sink.play();
-                                sockets[i]
-                                    .write_message(
-                                        serde_json::to_string(&ServerResponse {
-                                            message: "Player Resumed".into(),
-                                            search_results: vec![],
-                                        })
-                                        .unwrap()
-                                        .into(),
-                                    )
-                                    .unwrap();
+                                write_to_socket(
+                                    &mut sockets[i],
+                                    "Player Paused".to_string(),
+                                    vec![],
+                                )
+                                .unwrap();
                             }
                             UIRequest::Pause => {
                                 sink.pause();
-                                sockets[i]
-                                    .write_message(
-                                        serde_json::to_string(&ServerResponse {
-                                            message: "Player Paused".into(),
-                                            search_results: vec![],
-                                        })
-                                        .unwrap()
-                                        .into(),
-                                    )
-                                    .unwrap();
+                                write_to_socket(
+                                    &mut sockets[i],
+                                    "Player Paused".to_string(),
+                                    vec![],
+                                )
+                                .unwrap();
                             }
                             UIRequest::Skip(skip_direction) => todo!(),
                             UIRequest::Search(request) => {
@@ -161,16 +153,12 @@ fn main() {
                                 match items {
                                     None => sockets[i].write_message("None".into()).unwrap(),
                                     Some(items) => {
-                                        sockets[i]
-                                            .write_message(
-                                                serde_json::to_string(&ServerResponse {
-                                                    message: "Here are the results:".to_string(),
-                                                    search_results: items,
-                                                })
-                                                .unwrap()
-                                                .into(),
-                                            )
-                                            .unwrap();
+                                        write_to_socket(
+                                            &mut sockets[i],
+                                            "Here are the results:".to_string(),
+                                            items,
+                                        )
+                                        .unwrap();
                                     }
                                 }
 
@@ -186,31 +174,21 @@ fn main() {
 
                                 match items {
                                     None => {
-                                        sockets[i]
-                                            .write_message(
-                                                serde_json::to_string(&ServerResponse {
-                                                    message: "No song found with that title!"
-                                                        .to_string(),
-                                                    search_results: vec![],
-                                                })
-                                                .unwrap()
-                                                .into(),
-                                            )
-                                            .unwrap();
+                                        write_to_socket(
+                                            &mut sockets[i],
+                                            "No song found with that title!".to_string(),
+                                            vec![],
+                                        )
+                                        .unwrap();
                                     }
                                     Some(items) => {
                                         if items.len() > 1 {
-                                            sockets[i]
-                                                .write_message(
-                                                    serde_json::to_string(&ServerResponse {
-                                                        message: "Please be more specific"
-                                                            .to_string(),
-                                                        search_results: items,
-                                                    })
-                                                    .unwrap()
-                                                    .into(),
-                                                )
-                                                .unwrap();
+                                            write_to_socket(
+                                                &mut sockets[i],
+                                                "Please be more specific".to_string(),
+                                                items,
+                                            )
+                                            .unwrap();
                                         } else {
                                             println!(
                                                 "Switching song to: '{}'",
@@ -228,17 +206,13 @@ fn main() {
                                             sink.append(source);
                                             println!("{}", items.get(0).unwrap().path.clone());
 
-                                            sockets[i]
-                                                .write_message(
-                                                    serde_json::to_string(&ServerResponse {
-                                                        message: "Switching now playing"
-                                                            .to_string(),
-                                                        search_results: items,
-                                                    })
-                                                    .unwrap()
-                                                    .into(),
-                                                )
-                                                .unwrap();
+                                            write_to_socket(
+                                                &mut sockets[i],
+                                                "Switching now playing".to_string(),
+                                                items,
+                                            )
+                                            .unwrap();
+
                                             sink.play();
                                             println!("{}", sink.is_paused());
                                         }
@@ -252,4 +226,19 @@ fn main() {
             }
         }
     }
+}
+
+fn write_to_socket(
+    socket: &mut WebSocket<TcpStream>,
+    message: String,
+    results: Vec<message_types::ItemTag>,
+) -> Result<(), tungstenite::Error> {
+    socket.write_message(
+        serde_json::to_string(&ServerResponse {
+            message,
+            search_results: results,
+        })
+        .unwrap()
+        .into(),
+    )
 }
