@@ -89,7 +89,7 @@ fn main() {
     // Get a output stream handle to the default physical sound device
     let (_stream, stream_handle) = OutputStream::try_default().unwrap();
     // open an audio sink
-    let sink = Sink::try_new(&stream_handle).unwrap();
+    let mut sink = Sink::try_new(&stream_handle).unwrap();
     // Load a sound from a file, using a path relative to Cargo.toml
     let file = BufReader::new(File::open(test_file[0].path.clone()).unwrap());
     // Decode that sound file into a source
@@ -176,7 +176,75 @@ fn main() {
 
                                 //println!("got from db: {:?}", items);
                             }
-                            UIRequest::SwitchTo(partial_tag) => todo!(),
+                            UIRequest::SwitchTo(partial_tag) => {
+                                let items = dbo
+                                    .get(&DatabaseRequest {
+                                        search_type: db_operations::SearchType::Like,
+                                        search_tag: partial_tag,
+                                    })
+                                    .unwrap();
+
+                                match items {
+                                    None => {
+                                        sockets[i]
+                                            .write_message(
+                                                serde_json::to_string(&ServerResponse {
+                                                    message: "No song found with that title!"
+                                                        .to_string(),
+                                                    search_results: vec![],
+                                                })
+                                                .unwrap()
+                                                .into(),
+                                            )
+                                            .unwrap();
+                                    }
+                                    Some(items) => {
+                                        if items.len() > 1 {
+                                            sockets[i]
+                                                .write_message(
+                                                    serde_json::to_string(&ServerResponse {
+                                                        message: "Please be more specific"
+                                                            .to_string(),
+                                                        search_results: items,
+                                                    })
+                                                    .unwrap()
+                                                    .into(),
+                                                )
+                                                .unwrap();
+                                        } else {
+                                            println!(
+                                                "Switching song to: '{}'",
+                                                items.get(0).unwrap().title.clone()
+                                            );
+                                            sink.stop();
+
+                                            sink = Sink::try_new(&stream_handle).unwrap();
+                                            let file = BufReader::new(
+                                                File::open(items.get(0).unwrap().path.clone())
+                                                    .unwrap(),
+                                            );
+                                            // Decode that sound file into a source
+                                            let source = Decoder::new(file).unwrap();
+                                            sink.append(source);
+                                            println!("{}", items.get(0).unwrap().path.clone());
+
+                                            sockets[i]
+                                                .write_message(
+                                                    serde_json::to_string(&ServerResponse {
+                                                        message: "Switching now playing"
+                                                            .to_string(),
+                                                        search_results: items,
+                                                    })
+                                                    .unwrap()
+                                                    .into(),
+                                                )
+                                                .unwrap();
+                                            sink.play();
+                                            println!("{}", sink.is_paused());
+                                        }
+                                    }
+                                }
+                            }
                             UIRequest::GetStatus => todo!(),
                         },
                     }
