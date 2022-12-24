@@ -1,0 +1,50 @@
+use rodio::{Decoder, OutputStream, OutputStreamHandle, Sink};
+use std::fs::File;
+use std::io::BufReader;
+
+use crate::message_types::ItemTag;
+
+pub struct MusicPlayer {
+    playing_sink: rodio::Sink,
+    currently_playing: ItemTag,
+}
+
+impl MusicPlayer {
+    pub fn new(starting_item: ItemTag, output_stream_handle: &OutputStreamHandle) -> Self {
+
+        let sink = Sink::try_new(&output_stream_handle).unwrap();
+
+        //println!("filepath: {}", mp.currently_playing.path.clone());
+        let file = BufReader::new(File::open(starting_item.path.clone()).unwrap());
+
+        let source = Decoder::new(file).unwrap();
+        sink.append(source);
+
+        //mp.playing_sink.play();
+        //mp.playing_sink.sleep_until_end();
+
+        //mp.pause();
+        let mp = MusicPlayer {
+            playing_sink: sink,
+            currently_playing: starting_item,
+        };
+        return mp;
+    }
+
+    pub fn pause(self: &Self) -> () {
+        self.playing_sink.pause();
+    }
+
+    pub fn play(self: &Self) -> () {
+        self.playing_sink.play();
+        println!("playing");
+    }
+
+    // TODO: set these to return results
+    pub fn change_now_playing(self: &mut Self, item: ItemTag, output_stream_handle: &OutputStreamHandle) {
+        let source = Decoder::new(BufReader::new(File::open(item.path.clone()).unwrap())).unwrap();
+        self.playing_sink.stop();
+        self.playing_sink = Sink::try_new(output_stream_handle).unwrap();
+        self.playing_sink.append(source);
+    }
+}

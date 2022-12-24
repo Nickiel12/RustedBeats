@@ -1,8 +1,6 @@
-use rodio::{Decoder, OutputStream, Sink};
-use std::io::BufReader;
+use std::net::TcpListener;
 use std::net::TcpStream;
 use std::path::PathBuf;
-use std::{fs::File, net::TcpListener};
 use tungstenite::accept;
 use tungstenite::protocol::WebSocket;
 
@@ -13,9 +11,12 @@ use crate::db_operations::DatabaseRequest;
 pub mod db_operations;
 pub mod file_operations;
 pub mod message_types;
+pub mod music_player;
 pub mod server_handling;
 
+use crate::db_operations::DBObject;
 use crate::message_types::{PartialTag, ServerResponse, UIRequest};
+use crate::music_player::MusicPlayer;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about=None)]
@@ -86,18 +87,9 @@ fn main() {
         .unwrap()
         .unwrap();
 
-    // Get a output stream handle to the default physical sound device
-    let (_stream, stream_handle) = OutputStream::try_default().unwrap();
-    // open an audio sink
-    let mut sink = Sink::try_new(&stream_handle).unwrap();
-    // Load a sound from a file, using a path relative to Cargo.toml
-    let file = BufReader::new(File::open(test_file[0].path.clone()).unwrap());
-    // Decode that sound file into a source
-    let source = Decoder::new(file).unwrap();
-    sink.append(source);
-    // Play the sound directly on the device
-    sink.pause();
-    std::thread::sleep(std::time::Duration::from_secs(2));
+    let (_stream, stream_handle) = rodio::OutputStream::try_default().unwrap();
+    let mut music_player = MusicPlayer::new(test_file[0].clone(), &stream_handle);
+    music_player.play();
 
     let server = TcpListener::bind("127.0.0.1:9001").unwrap();
 
@@ -121,111 +113,88 @@ fn main() {
                         Err(error) => {
                             println!("There was an error decoding the message: {:?}", error)
                         }
-                        Ok(req) => match req {
-                            UIRequest::Play => {
-                                sink.play();
-                                write_to_socket(
-                                    &mut sockets[i],
-                                    "Player Paused".to_string(),
-                                    vec![],
-                                )
-                                .unwrap();
-                            }
-                            UIRequest::Pause => {
-                                sink.pause();
-                                write_to_socket(
-                                    &mut sockets[i],
-                                    "Player Paused".to_string(),
-                                    vec![],
-                                )
-                                .unwrap();
-                            }
-                            UIRequest::Skip(skip_direction) => todo!(),
-                            UIRequest::Search(request) => {
-                                println!("got a: {:?}", request);
-                                let items = dbo
-                                    .get(&DatabaseRequest {
-                                        search_type: db_operations::SearchType::Like,
-                                        search_tag: request,
-                                    })
-                                    .unwrap();
-
-                                match items {
-                                    None => sockets[i].write_message("None".into()).unwrap(),
-                                    Some(items) => {
-                                        write_to_socket(
-                                            &mut sockets[i],
-                                            "Here are the results:".to_string(),
-                                            items,
-                                        )
-                                        .unwrap();
-                                    }
-                                }
-
-                                //println!("got from db: {:?}", items);
-                            }
-                            UIRequest::SwitchTo(partial_tag) => {
-                                let items = dbo
-                                    .get(&DatabaseRequest {
-                                        search_type: db_operations::SearchType::Like,
-                                        search_tag: partial_tag,
-                                    })
-                                    .unwrap();
-
-                                match items {
-                                    None => {
-                                        write_to_socket(
-                                            &mut sockets[i],
-                                            "No song found with that title!".to_string(),
-                                            vec![],
-                                        )
-                                        .unwrap();
-                                    }
-                                    Some(items) => {
-                                        if items.len() > 1 {
-                                            write_to_socket(
-                                                &mut sockets[i],
-                                                "Please be more specific".to_string(),
-                                                items,
-                                            )
-                                            .unwrap();
-                                        } else {
-                                            println!(
-                                                "Switching song to: '{}'",
-                                                items.get(0).unwrap().title.clone()
-                                            );
-                                            sink.stop();
-
-                                            sink = Sink::try_new(&stream_handle).unwrap();
-                                            let file = BufReader::new(
-                                                File::open(items.get(0).unwrap().path.clone())
-                                                    .unwrap(),
-                                            );
-                                            // Decode that sound file into a source
-                                            let source = Decoder::new(file).unwrap();
-                                            sink.append(source);
-                                            println!("{}", items.get(0).unwrap().path.clone());
-
-                                            write_to_socket(
-                                                &mut sockets[i],
-                                                "Switching now playing".to_string(),
-                                                items,
-                                            )
-                                            .unwrap();
-
-                                            sink.play();
-                                            println!("{}", sink.is_paused());
-                                        }
-                                    }
-                                }
-                            }
-                            UIRequest::GetStatus => todo!(),
-                        },
+                        Ok(req) => {
+                            handle_uirequest(req, &mut sockets[i], &mut music_player, &dbo, &stream_handle).unwrap()
+                        }
                     }
                 }
             }
         }
     }
+}
+
+fn handle_uirequest(
+    request: UIRequest,
+    socket: &mut WebSocket<TcpStream>,
+    music_player: &mut MusicPlayer,
+    dbo: &DBObject,
+    stream_handle: &rodio::OutputStreamHandle,
+) -> Result<(), String> {
+    match request {
+        UIRequest::Play => {
+            music_player.play();
+            write_to_socket(socket, "Player Resumed".to_string(), vec![]).unwrap();
+        }
+        UIRequest::Pause => {
+            music_player.pause();
+            write_to_socket(socket, "Player Paused".to_string(), vec![]).unwrap();
+        }
+        UIRequest::Skip(skip_direction) => todo!(),
+        UIRequest::Search(request) => {
+            println!("got a: {:?}", request);
+            let items = dbo
+                .get(&DatabaseRequest {
+                    search_type: db_operations::SearchType::Like,
+                    search_tag: request,
+                })
+                .unwrap();
+
+            match items {
+                None => socket.write_message("None".into()).unwrap(),
+                Some(items) => {
+                    write_to_socket(socket, "Here are the results:".to_string(), items).unwrap();
+                }
+            }
+
+            //println!("got from db: {:?}", items);
+        }
+        UIRequest::SwitchTo(partial_tag) => {
+            let items = dbo
+                .get(&DatabaseRequest {
+                    search_type: db_operations::SearchType::Like,
+                    search_tag: partial_tag,
+                })
+                .unwrap();
+
+            match items {
+                None => {
+                    write_to_socket(socket, "No song found with that title!".to_string(), vec![])
+                        .unwrap();
+                }
+                Some(items) => {
+                    if items.len() > 1 {
+                        write_to_socket(socket, "Please be more specific".to_string(), items)
+                            .unwrap();
+                    } else {
+                        println!(
+                            "Switching song to: '{}'",
+                            items.get(0).unwrap().title.clone()
+                        );
+                        music_player.change_now_playing(items.get(0).unwrap().clone(), stream_handle);
+                        println!("{}", items.get(0).unwrap().path.clone());
+
+                        write_to_socket(socket, "Switching now playing".to_string(), items)
+                            .unwrap();
+
+                        music_player.play();
+                    }
+                }
+            }
+        }
+        UIRequest::GetStatus => todo!(),
+    }
+
+    Ok(())
 }
 
 fn write_to_socket(
