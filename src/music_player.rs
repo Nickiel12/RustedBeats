@@ -4,13 +4,14 @@ use std::io::BufReader;
 
 use crate::message_types::ItemTag;
 
-pub struct MusicPlayer {
+pub struct MusicPlayer<'a> {
+    output_stream_handle: &'a OutputStreamHandle,
     playing_sink: rodio::Sink,
     currently_playing: ItemTag,
 }
 
-impl MusicPlayer {
-    pub fn new(starting_item: ItemTag, output_stream_handle: &OutputStreamHandle) -> Self {
+impl<'a> MusicPlayer<'a> {
+    pub fn new (starting_item: ItemTag, output_stream_handle: &'a OutputStreamHandle) -> Self {
 
         let sink = Sink::try_new(&output_stream_handle).unwrap();
 
@@ -25,6 +26,7 @@ impl MusicPlayer {
 
         //mp.pause();
         let mp = MusicPlayer {
+            output_stream_handle,
             playing_sink: sink,
             currently_playing: starting_item,
         };
@@ -41,10 +43,10 @@ impl MusicPlayer {
     }
 
     // TODO: set these to return results
-    pub fn change_now_playing(self: &mut Self, item: ItemTag, output_stream_handle: &OutputStreamHandle) {
+    pub fn change_now_playing(self: &mut Self, item: ItemTag) {
         let source = Decoder::new(BufReader::new(File::open(item.path.clone()).unwrap())).unwrap();
         self.playing_sink.stop();
-        self.playing_sink = Sink::try_new(output_stream_handle).unwrap();
+        self.playing_sink = Sink::try_new(self.output_stream_handle).unwrap();
         self.playing_sink.append(source);
     }
 }

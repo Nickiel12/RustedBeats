@@ -180,7 +180,7 @@ fn handle_uirequest(
                             "Switching song to: '{}'",
                             items.get(0).unwrap().title.clone()
                         );
-                        music_player.change_now_playing(items.get(0).unwrap().clone(), stream_handle);
+                        music_player.change_now_playing(items.get(0).unwrap().clone());
                         println!("{}", items.get(0).unwrap().path.clone());
 
                         write_to_socket(socket, "Switching now playing".to_string(), items)
