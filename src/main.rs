@@ -90,15 +90,21 @@ fn main() {
     let (_stream, stream_handle) = rodio::OutputStream::try_default().unwrap();
     let mut music_player = MusicPlayer::new(test_file[0].clone(), &stream_handle);
 
-    let server = TcpListener::bind("127.0.0.1:9001").unwrap();
+    let tcp_listener = TcpListener::bind("127.0.0.1:9001").unwrap();
+    tcp_listener.set_nonblocking(true).unwrap();
 
     let mut sockets = Vec::<WebSocket<TcpStream>>::new();
-    println!("Listening on {}", server.local_addr().unwrap());
+    println!("Listening on {}", tcp_listener.local_addr().unwrap());
+
     loop {
-        if let Ok((stream, addr)) = server.accept() {
+        if let Ok((stream, addr)) = tcp_listener.accept() {
+            stream.set_nonblocking(true).unwrap();
             println!("New socket connected from: {}", addr);
-            //TODO: handle this error
-            sockets.push(accept(stream).unwrap());
+
+            match accept(stream) {
+                Ok(sck) => sockets.push(sck),
+                Err(_) => continue,
+            }
         }
 
         if sockets.len() == 0 {
@@ -107,7 +113,6 @@ fn main() {
 
         // Need to get an asynchronous socket reader like tokio
         for i in 0..sockets.len() {
-            println!("{}", sockets.len());
             match sockets[i].read_message() {
                 Ok(mess) => {
                     if mess.is_text() {
@@ -126,13 +131,26 @@ fn main() {
                         }
                     }
                 }
-                Err(error) => {
-                    if error.to_string().starts_with("Connection closed normally") {
-                        sockets.remove(i);
-                    } else {
-                        println!("a socket errored: {}", error.to_string());
+                Err(error) => match error {
+                    tungstenite::Error::ConnectionClosed => {
+                        println!("dropping socket");
+                        let tmp = sockets.remove(i);
+                        drop(tmp);
                     }
-                }
+                    tungstenite::Error::Io(_) => {
+                        if error.to_string().ends_with("(os error 32)") {
+                            sockets.remove(i);
+                        } else if error.to_string().ends_with("(os error 11)") {
+                            continue;
+                        } else {
+                            println!("There was an IO error: {}", error.to_string());
+                        }
+
+                        //panic!();
+                        //continue;
+                    }
+                    _ => println!("A socket errored: {}", error.to_string()),
+                },
             }
         }
     }
