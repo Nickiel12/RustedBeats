@@ -89,7 +89,6 @@ fn main() {
 
     let (_stream, stream_handle) = rodio::OutputStream::try_default().unwrap();
     let mut music_player = MusicPlayer::new(test_file[0].clone(), &stream_handle);
-    music_player.play();
 
     let server = TcpListener::bind("127.0.0.1:9001").unwrap();
 
@@ -103,19 +102,35 @@ fn main() {
         }
 
         if sockets.len() == 0 {
-            std::thread::sleep(std::time::Duration::from_secs(1));
+            std::thread::sleep(std::time::Duration::from_millis(200));
         }
 
+        // Need to get an asynchronous socket reader like tokio
         for i in 0..sockets.len() {
-            if let Ok(mess) = sockets[i].read_message() {
-                if mess.is_text() {
-                    match server_handling::handle_request(mess.into_text().unwrap()) {
-                        Err(error) => {
-                            println!("There was an error decoding the message: {:?}", error)
+            println!("{}", sockets.len());
+            match sockets[i].read_message() {
+                Ok(mess) => {
+                    if mess.is_text() {
+                        match server_handling::handle_request(mess.into_text().unwrap()) {
+                            Err(error) => {
+                                println!("There was an error decoding the message: {:?}", error)
+                            }
+                            Ok(req) => handle_uirequest(
+                                req,
+                                &mut sockets[i],
+                                &mut music_player,
+                                &dbo,
+                                &stream_handle,
+                            )
+                            .unwrap(),
                         }
-                        Ok(req) => {
-                            handle_uirequest(req, &mut sockets[i], &mut music_player, &dbo, &stream_handle).unwrap()
-                        }
+                    }
+                }
+                Err(error) => {
+                    if error.to_string().starts_with("Connection closed normally") {
+                        sockets.remove(i);
+                    } else {
+                        println!("a socket errored: {}", error.to_string());
                     }
                 }
             }
@@ -168,19 +183,26 @@ fn handle_uirequest(
 
             match items {
                 None => {
-                    write_to_socket(socket, "No song found with that title!".to_string(), vec![])
+                    write_to_socket(socket, "No song found with that field!".to_string(), vec![])
                         .unwrap();
                 }
                 Some(items) => {
                     if items.len() > 1 {
-                        write_to_socket(socket, "Please be more specific".to_string(), items)
-                            .unwrap();
+                        write_to_socket(
+                            socket,
+                            "Multiple results found\nPlease be more specific".to_string(),
+                            items,
+                        )
+                        .unwrap();
                     } else {
                         println!(
                             "Switching song to: '{}'",
                             items.get(0).unwrap().title.clone()
                         );
-                        music_player.change_now_playing(items.get(0).unwrap().clone());
+
+                        music_player
+                            .change_now_playing(items.get(0).unwrap().clone())
+                            .unwrap();
                         println!("{}", items.get(0).unwrap().path.clone());
 
                         write_to_socket(socket, "Switching now playing".to_string(), items)
