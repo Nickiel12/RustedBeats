@@ -113,14 +113,12 @@ fn main() {
         "Socket listening on: {}",
         tcp_listener.local_addr().unwrap()
     );
-    println!("Listening on {}", tcp_listener.local_addr().unwrap());
 
     loop {
         if let Ok((stream, addr)) = tcp_listener.accept() {
             stream.set_nonblocking(true).unwrap();
 
             info!("New socket connected from: {}", addr);
-            println!("New socket connected from: {}", addr);
 
             match accept(stream) {
                 Ok(sck) => sockets.push(sck),
@@ -139,7 +137,7 @@ fn main() {
                     if mess.is_text() {
                         match server_handling::handle_request(mess.into_text().unwrap()) {
                             Err(error) => {
-                                println!("There was an error decoding the message: {:?}", error)
+                                error!("There was an error decoding the message: {:?}", error)
                             }
                             Ok(req) => handle_uirequest(
                                 req,
@@ -154,7 +152,7 @@ fn main() {
                 }
                 Err(error) => match error {
                     tungstenite::Error::ConnectionClosed => {
-                        println!("dropping socket");
+                        info!("dropping socket: {}", i);
                         let tmp = sockets.remove(i);
                         drop(tmp);
                     }
@@ -169,14 +167,11 @@ fn main() {
                         {
                             sockets.remove(i);
                         } else {
-                            println!("There was an IO error: {}", error.to_string());
+                            error!("There was an IO error: {}", error.to_string());
                         }
-
-                        //panic!();
-                        //continue;
                     }
                     _ => {
-                        println!("A socket errored: {}", error.to_string());
+                        warn!("A socket errored: {}", error.to_string());
                         sockets.remove(i);
                     }
                 },
@@ -203,7 +198,8 @@ fn handle_uirequest(
         }
         UIRequest::Skip(skip_direction) => todo!(),
         UIRequest::Search(request) => {
-            println!("got a: {:?}", request);
+            // TODO: switch this to a debug
+            info!("got a: {:?}", request);
             let items = dbo
                 .get(&DatabaseRequest {
                     search_type: db_operations::SearchType::Like,
@@ -217,8 +213,6 @@ fn handle_uirequest(
                     write_to_socket(socket, "Here are the results:".to_string(), items).unwrap();
                 }
             }
-
-            //println!("got from db: {:?}", items);
         }
         UIRequest::SwitchTo(partial_tag) => {
             let items = dbo
@@ -242,7 +236,7 @@ fn handle_uirequest(
                         )
                         .unwrap();
                     } else {
-                        println!(
+                        info!(
                             "Switching song to: '{}'",
                             items.get(0).unwrap().title.clone()
                         );
@@ -250,7 +244,7 @@ fn handle_uirequest(
                         music_player
                             .change_now_playing(items.get(0).unwrap().clone())
                             .unwrap();
-                        println!("{}", items.get(0).unwrap().path.clone());
+                        info!("{}", items.get(0).unwrap().path.clone());
 
                         write_to_socket(socket, "Switching now playing".to_string(), items)
                             .unwrap();
