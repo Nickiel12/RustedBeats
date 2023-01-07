@@ -142,6 +142,8 @@ fn main() {
                             sockets.remove(i);
                         } else if error.to_string().ends_with("(os error 11)") {
                             continue;
+                        } else if error.to_string().ends_with("Trying to work with closed connection") {
+                            sockets.remove(i);
                         } else {
                             println!("There was an IO error: {}", error.to_string());
                         }
