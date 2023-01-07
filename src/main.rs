@@ -1,3 +1,6 @@
+use log::{debug, error, info, trace, warn, LevelFilter};
+use simplelog::*;
+use std::fs::File;
 use std::net::TcpListener;
 use std::net::TcpStream;
 use std::path::PathBuf;
@@ -29,27 +32,33 @@ struct Cli {
     #[arg(short, long)]
     configuration_file: Option<String>,
 
+    #[arg(long, default_value = "SousaLog.txt")]
+    log_file: String,
+
     /// Specify a specific database file
     #[arg(short, long)]
     database_file: Option<String>,
 
-    /// Start the server without a front end
-    #[arg(long)]
-    no_webserver: bool,
-
     /// Run the database in memory alone
-    #[arg(long)]
+    #[arg(long, default_value = "false")]
     no_save: bool,
 
     /// Delete an existing database file (wherever it looks on startup)
+    /// TODO: actually make this a thing
     #[arg(long)]
     reset_database: bool,
 }
 
 fn main() {
     let cli = Cli::parse();
-
     // settings = confy settings
+
+    let log_file: String;
+
+    log_file = "testing_log.txt".to_string();
+
+    init_logger(log_file);
+
     let music_dir: String;
     if cli.root_directory.is_some() {
         music_dir = cli.root_directory.clone().unwrap();
@@ -57,14 +66,18 @@ fn main() {
         music_dir = String::from(dirs_next::audio_dir().unwrap().to_str().unwrap());
     }
 
-    let music_scanner = file_operations::MusicScanner::new(music_dir);
+    let music_scanner = file_operations::MusicScanner::new(music_dir.clone());
 
     let db_path: PathBuf = ["/", "home", "nixolas", "RustedBeats.db"].iter().collect();
 
-    let dbo = db_operations::DBObject::new(&db_path, false).unwrap();
+    info!("Opening database in memory mode: {}", cli.no_save);
+    info!("Database file path is: {}", &db_path.to_string_lossy());
+    let dbo = db_operations::DBObject::new(&db_path, cli.no_save).unwrap();
 
+    info!("Starting file scan with root set to: {}", music_dir);
     for file_batch in music_scanner {
         for filepath in file_batch {
+            debug!("checking file: {}", filepath.to_string_lossy());
             if filepath.to_string_lossy().ends_with(".wav") {
                 continue;
             } else {
@@ -87,18 +100,26 @@ fn main() {
         .unwrap()
         .unwrap();
 
+    info!("Creating music player");
     let (_stream, stream_handle) = rodio::OutputStream::try_default().unwrap();
     let mut music_player = MusicPlayer::new(test_file[0].clone(), &stream_handle);
 
+    info!("Opening Tcp Listener");
     let tcp_listener = TcpListener::bind("127.0.0.1:9001").unwrap();
     tcp_listener.set_nonblocking(true).unwrap();
 
     let mut sockets = Vec::<WebSocket<TcpStream>>::new();
+    info!(
+        "Socket listening on: {}",
+        tcp_listener.local_addr().unwrap()
+    );
     println!("Listening on {}", tcp_listener.local_addr().unwrap());
 
     loop {
         if let Ok((stream, addr)) = tcp_listener.accept() {
             stream.set_nonblocking(true).unwrap();
+
+            info!("New socket connected from: {}", addr);
             println!("New socket connected from: {}", addr);
 
             match accept(stream) {
@@ -142,7 +163,10 @@ fn main() {
                             sockets.remove(i);
                         } else if error.to_string().ends_with("(os error 11)") {
                             continue;
-                        } else if error.to_string().ends_with("Trying to work with closed connection") {
+                        } else if error
+                            .to_string()
+                            .ends_with("Trying to work with closed connection")
+                        {
                             sockets.remove(i);
                         } else {
                             println!("There was an IO error: {}", error.to_string());
@@ -255,4 +279,22 @@ fn write_to_socket(
         .unwrap()
         .into(),
     )
+}
+
+pub fn init_logger(output_file: String) {
+    // TODO: configure the log levels to something appropriate
+    CombinedLogger::init(vec![
+        TermLogger::new(
+            LevelFilter::Info,
+            Config::default(),
+            TerminalMode::Mixed,
+            ColorChoice::Auto,
+        ),
+        WriteLogger::new(
+            LevelFilter::Info,
+            Config::default(),
+            File::create("my_rust_binary.log").unwrap(),
+        ),
+    ])
+    .unwrap();
 }
