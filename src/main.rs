@@ -151,7 +151,10 @@ fn main() {
                         //panic!();
                         //continue;
                     }
-                    _ => println!("A socket errored: {}", error.to_string()),
+                    _ => {
+                        println!("A socket errored: {}", error.to_string());
+                        sockets.remove(i);
+                    }
                 },
             }
         }
