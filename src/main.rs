@@ -293,7 +293,7 @@ pub fn init_logger(output_file: String) {
         WriteLogger::new(
             LevelFilter::Info,
             Config::default(),
-            File::create("my_rust_binary.log").unwrap(),
+            File::create(output_file).unwrap(),
         ),
     ])
     .unwrap();
