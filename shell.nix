@@ -20,7 +20,8 @@ pkgs.mkShell {
 
   RUST_BACKTRACE = 1;
 
-  shellHook = ''
-    alias gust=/home/nixolas/Documents/Gust/target/debug/gust
-  '';
+   shellHook = ''
+  cargo install --locked bacon
+  export PATH=$HOME/.cargo/bin:$PATH
+'';
 }
