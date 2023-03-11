@@ -1,8 +1,9 @@
-use crate::message_types::{UIRequest};
+use crate::message_types::UIRequest;
+use log::{debug, error, info, trace, warn, LevelFilter};
 
 /// Pass a
 pub fn handle_request(socket_message: String) -> Result<UIRequest, serde_json::Error> {
-    println!("Recieved a socket message: {}", socket_message);
+    info!("Recieved a socket message: {}", socket_message);
     let request: UIRequest = serde_json::from_str(&socket_message)?;
 
     Ok(request)
