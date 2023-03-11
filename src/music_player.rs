@@ -36,17 +36,17 @@ impl<'a> MusicPlayer<'a> {
         return mp;
     }
 
-    pub fn pause(self: &Self) -> () {
+    pub fn pause(&self) {
         self.playing_sink.pause();
     }
 
-    pub fn play(self: &Self) -> () {
+    pub fn play(&self) {
         self.playing_sink.play();
         println!("playing");
     }
 
     // TODO: set these to return results
-    pub fn change_now_playing(self: &mut Self, item: ItemTag) -> Result<(), MusicPlayerError> {
+    pub fn change_now_playing(&mut self, item: ItemTag) -> Result<(), MusicPlayerError> {
         println!("\n\n switching now playing to: {}", item.path.clone());
         let file = File::open(item.path.clone());
 

@@ -16,14 +16,14 @@ pub struct DatabaseRequest {
 }
 
 impl SearchType {
-    pub fn is_where(self: &Self) -> bool {
+    pub fn is_where(&self) -> bool {
         match self {
             SearchType::Where => true,
             SearchType::Like => false,
         }
     }
 
-    pub fn is_like(self: &Self) -> bool {
+    pub fn is_like(&self) -> bool {
         match self {
             SearchType::Where => false,
             SearchType::Like => true,
@@ -111,7 +111,7 @@ impl DBObject {
         Ok(DBObject { conn })
     }
 
-    pub fn save_tag(self: &Self, tag: &ItemTag) -> Result<(), DatabaseCreationError> {
+    pub fn save_tag(&self, tag: &ItemTag) -> Result<(), DatabaseCreationError> {
         self.conn.execute(
             "INSERT OR IGNORE INTO musicinfo (path, title, artist, album, album_artist) VALUES ( ?1, ?2, ?3, ?4, ?5 )",
             params![tag.path, tag.title, tag.artist, tag.album, tag.album_artist],
@@ -122,7 +122,7 @@ impl DBObject {
     /// Returns a vector of ItemTags that fulfil the requested query
     ///
     pub fn get(
-        self: &Self,
+        &self,
         request: &DatabaseRequest,
     ) -> Result<Option<Vec<ItemTag>>, rusqlite::Error> {
         assert!(!request.search_tag.is_empty(), "There must be at least one field filled in the PartialItem. Use `get_all()` if you want the full table");

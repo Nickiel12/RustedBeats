@@ -44,27 +44,27 @@ impl Default for PartialTag {
 }
 
 impl PartialTag {
-    pub fn has_path(self: &Self) -> bool {
+    pub fn has_path(&self) -> bool {
         self.path.is_some()
     }
 
-    pub fn has_title(self: &Self) -> bool {
+    pub fn has_title(&self) -> bool {
         self.title.is_some()
     }
 
-    pub fn has_artist(self: &Self) -> bool {
+    pub fn has_artist(&self) -> bool {
         self.artist.is_some()
     }
 
-    pub fn has_album(self: &Self) -> bool {
+    pub fn has_album(&self) -> bool {
         self.album.is_some()
     }
 
-    pub fn has_album_artist(self: &Self) -> bool {
+    pub fn has_album_artist(&self) -> bool {
         self.album_artist.is_some()
     }
 
-    pub fn is_empty(self: &Self) -> bool {
+    pub fn is_empty(&self) -> bool {
         return self.path.is_none()
             && self.title.is_none()
             && self.artist.is_none()
