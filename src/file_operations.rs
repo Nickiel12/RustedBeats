@@ -1,6 +1,7 @@
 use id3::{Tag, TagLike};
 use scan_dir::ScanDir;
-use std::path::PathBuf;
+use std::{path::{PathBuf, Path}, ffi::OsStr};
+use log::warn;
 
 use crate::message_types::ItemTag;
 
@@ -64,11 +65,27 @@ impl Iterator for MusicScanner {
             .unwrap();
 
         // scan the current dir for normal files
-        // TODO: Need to add filters once list of supported files is created
         ScanDir::files()
-            .read(target, |iter| {
+            .read(target.clone(), |iter| {
                 for (entry, _name) in iter {
-                    files.push(entry.path());
+                    match entry.path().to_str() {
+                        Some(path) => {
+                            // Check if the file has a valid extension
+                            match Path::new(path).extension().and_then(OsStr::to_str) {
+                                Some(extension) => {
+                                    if SUPPORTED_FILETYPES.contains(&extension){
+                                        files.push(entry.path());
+                                    }
+                                },
+                                // Does not have a valid extension
+                                None => continue
+                            }
+                        },
+                        None => {
+                            warn!("Error encountered in directory: {:?}", target);
+                            warn!("There was an error getting the path to {:?}", path);
+                        }
+                    }
                 }
             })
             .unwrap();
