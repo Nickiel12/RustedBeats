@@ -92,5 +92,5 @@ pub enum UIRequest {
     Skip(SkipDirection),
     Search(PartialTag),
     SwitchTo(PartialTag),
-    GetStatus,
+    GetTime,
 }

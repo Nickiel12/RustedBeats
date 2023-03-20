@@ -8,18 +8,17 @@ use tungstenite::accept;
 use tungstenite::protocol::WebSocket;
 
 use clap::Parser;
-use dirs_next;
 
-use crate::db_operations::DatabaseRequest;
 pub mod db_operations;
 pub mod file_operations;
 pub mod message_types;
 pub mod music_player;
 pub mod server_handling;
 
-use crate::db_operations::DBObject;
-use crate::message_types::{PartialTag, ServerResponse, UIRequest};
+use crate::db_operations::{DBObject, DatabaseRequest};
+use crate::message_types::{PartialTag, UIRequest};
 use crate::music_player::MusicPlayer;
+use crate::server_handling::{write_to_socket, sanitize_partialtag};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about=None)]
@@ -197,7 +196,8 @@ fn handle_uirequest(
             write_to_socket(socket, "Player Paused".to_string(), vec![]).unwrap();
         }
         UIRequest::Skip(skip_direction) => todo!(),
-        UIRequest::Search(request) => {
+        UIRequest::Search(unsanitary_req) => {
+            let request = sanitize_partialtag(unsanitary_req);
             // TODO: switch this to a debug
             info!("got a: {:?}", request);
             let items = dbo
@@ -214,7 +214,8 @@ fn handle_uirequest(
                 }
             }
         }
-        UIRequest::SwitchTo(partial_tag) => {
+        UIRequest::SwitchTo(in_partial_tag) => {
+            let partial_tag = sanitize_partialtag(in_partial_tag);
             let items = dbo
                 .get(&DatabaseRequest {
                     search_type: db_operations::SearchType::Like,
@@ -254,26 +255,23 @@ fn handle_uirequest(
                 }
             }
         }
-        UIRequest::GetStatus => todo!(),
+        UIRequest::GetTime => {
+            info!("Sending time info");
+            let message = format!(
+                "Song length: {:?}\nCurrent Position: {:?}",
+                music_player.get_track_length(),
+                music_player.get_played_time());
+            write_to_socket(
+                socket,
+                message,
+                vec![])
+            .unwrap();
+        },
     }
 
     Ok(())
 }
 
-fn write_to_socket(
-    socket: &mut WebSocket<TcpStream>,
-    message: String,
-    results: Vec<message_types::ItemTag>,
-) -> Result<(), tungstenite::Error> {
-    socket.write_message(
-        serde_json::to_string(&ServerResponse {
-            message,
-            search_results: results,
-        })
-        .unwrap()
-        .into(),
-    )
-}
 
 pub fn init_logger(output_file: String) {
     // TODO: configure the log levels to something appropriate
